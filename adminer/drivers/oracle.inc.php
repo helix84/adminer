@@ -149,7 +149,7 @@ if (isset($_GET["oracle"])) {
 	}
 
 	function get_databases() {
-		return get_vals("SELECT tablespace_name FROM user_tablespaces");
+		return get_vals("SELECT DISTINCT OWNER from ALL_CATALOG where OWNER not in ('CTXSYS','DBSNMP','DMSYS','EXFSYS','GDOSYS','MDSYS','OLAPSYS','ORDSYS','OUTLN','PUBLIC','SI_INFORMTN_SCHEMA','SYS','SYSTEM','TSMSYS','WMSYS','XDB') order by OWNER");
 	}
 
 	function limit($query, $where, $limit, $offset = 0, $separator = " ") {
@@ -178,9 +178,8 @@ if (isset($_GET["oracle"])) {
 	}
 
 	function tables_list() {
-		return get_key_vals("SELECT table_name, 'table' FROM all_tables WHERE tablespace_name = " . q(DB) . "
-UNION SELECT view_name, 'view' FROM user_views"
-		); //! views don't have schema
+		return get_key_vals("SELECT table_name, lower(table_type) FROM all_catalog WHERE owner = " . q(DB)
+		); //! views don't have schema. Yes, they do!
 	}
 
 	function count_tables($databases) {
@@ -190,8 +189,7 @@ UNION SELECT view_name, 'view' FROM user_views"
 	function table_status($name = "") {
 		$return = array();
 		$search = q($name);
-		foreach (get_rows('SELECT table_name "Name", \'table\' "Engine", avg_row_len * num_rows "Data_length", num_rows "Rows" FROM all_tables WHERE tablespace_name = ' . q(DB) . ($name != "" ? " AND table_name = $search" : "") . "
-UNION SELECT view_name, 'view', 0, 0 FROM user_views" . ($name != "" ? " WHERE view_name = $search" : "")
+		foreach (get_rows('SELECT table_name "Name", lower(table_type) "Engine" FROM all_catalog WHERE owner = ' . q(DB) . ($name != "" ? " AND table_name = $search" : "")
 		) as $row) {
 			if ($name != "") {
 				return $row;

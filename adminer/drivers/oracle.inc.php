@@ -149,7 +149,11 @@ if (isset($_GET["oracle"])) {
 	}
 
 	function get_databases() {
-		return get_vals("SELECT DISTINCT OWNER from ALL_CATALOG where OWNER not in ('CTXSYS','DBSNMP','DMSYS','EXFSYS','GDOSYS','MDSYS','OLAPSYS','ORDSYS','OUTLN','PUBLIC','SI_INFORMTN_SCHEMA','SYS','SYSTEM','TSMSYS','WMSYS','XDB') order by OWNER");
+		return get_vals("SELECT USER FROM DUAL "
+			      . "UNION SELECT DISTINCT OWNER from ALL_CATALOG"
+			      . "WHERE OWNER not in ('CTXSYS','DBSNMP','DMSYS','EXFSYS','GDOSYS','MDSYS','OLAPSYS','ORDSYS','OUTLN','PUBLIC','SI_INFORMTN_SCHEMA','SYS','SYSTEM','TSMSYS','WMSYS','XDB') "
+			      . "AND OWNER <> USER "
+			      . "ORDER BY DECODE(USER, 1, 2), OWNER)";
 	}
 
 	function limit($query, $where, $limit, $offset = 0, $separator = " ") {
@@ -178,7 +182,7 @@ if (isset($_GET["oracle"])) {
 	}
 
 	function tables_list() {
-		return get_key_vals("SELECT table_name, lower(table_type) FROM all_catalog WHERE owner = " . q(DB)
+		return get_key_vals("SELECT table_name, lower(table_type) FROM all_catalog WHERE owner = " . q(DB) . "ORDER BY table_name"
 		); //! views don't have schema. Yes, they do!
 	}
 
@@ -189,7 +193,7 @@ if (isset($_GET["oracle"])) {
 	function table_status($name = "") {
 		$return = array();
 		$search = q($name);
-		foreach (get_rows('SELECT table_name "Name", lower(table_type) "Engine" FROM all_catalog WHERE owner = ' . q(DB) . ($name != "" ? " AND table_name = $search" : "")
+		foreach (get_rows('SELECT table_name "Name", initcap(lower(table_type)) "Engine" FROM all_catalog WHERE owner = ' . q(DB) . ($name != "" ? " AND table_name = $search" : "")
 		) as $row) {
 			if ($name != "") {
 				return $row;
@@ -327,30 +331,19 @@ ORDER BY uc.constraint_type, uic.column_position", $connection2) as $row) {
 	}
 	
 	function schemas() {
-		return get_vals("SELECT DISTINCT owner FROM dba_segments WHERE owner IN (SELECT username FROM dba_users WHERE default_tablespace NOT IN ('SYSTEM','SYSAUX'))");
+		return array();
 	}
 	
 	function get_schema() {
-		global $connection;
-		return $connection->result("SELECT sys_context('USERENV', 'SESSION_USER') FROM dual");
+		return "";
 	}
 	
 	function set_schema($scheme) {
-		global $connection;
-		return $connection->query("ALTER SESSION SET CURRENT_SCHEMA = " . idf_escape($scheme));
+		return true;
 	}
 	
 	function show_variables() {
 		return get_key_vals('SELECT name, display_value FROM v$parameter');
-	}
-	
-	function process_list() {
-		return get_rows('SELECT sess.process AS "process", sess.username AS "user", sess.schemaname AS "schema", sess.status AS "status", sess.wait_class AS "wait_class", sess.seconds_in_wait AS "seconds_in_wait", sql.sql_text AS "sql_text", sess.machine AS "machine", sess.port AS "port"
-FROM v$session sess LEFT OUTER JOIN v$sql sql
-ON sql.sql_id = sess.sql_id
-WHERE sess.type = \'USER\'
-ORDER BY PROCESS
-');
 	}
 	
 	function show_status() {
@@ -359,7 +352,7 @@ ORDER BY PROCESS
 	}
 	
 	function support($feature) {
-		return ereg("view|scheme|processlist|drop_col|variables|status", $feature); //!
+		return ereg("view|drop_col|variables|status", $feature); //!
 	}
 	
 	$jush = "oracle";

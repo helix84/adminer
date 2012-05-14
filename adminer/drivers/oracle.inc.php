@@ -149,11 +149,12 @@ if (isset($_GET["oracle"])) {
 	}
 
 	function get_databases() {
-		return get_vals("SELECT USER FROM DUAL "
-			      . "UNION SELECT DISTINCT OWNER from ALL_CATALOG"
-			      . "WHERE OWNER not in ('CTXSYS','DBSNMP','DMSYS','EXFSYS','GDOSYS','MDSYS','OLAPSYS','ORDSYS','OUTLN','PUBLIC','SI_INFORMTN_SCHEMA','SYS','SYSTEM','TSMSYS','WMSYS','XDB') "
-			      . "AND OWNER <> USER "
-			      . "ORDER BY DECODE(USER, 1, 2), OWNER)";
+		$user = get_vals("SELECT USER FROM DUAL");
+		$owner = get_vals("SELECT DISTINCT OWNER FROM ALL_CATALOG
+WHERE OWNER not in
+('CTXSYS','DBSNMP','DMSYS','EXFSYS','GDOSYS','MDSYS','OLAPSYS','ORDSYS','OUTLN','PUBLIC','SI_INFORMTN_SCHEMA','SYS','SYSTEM','TSMSYS','WMSYS','XDB')");
+		$merged = array_merge($user, $owner);
+		return array_unique($merged);
 	}
 
 	function limit($query, $where, $limit, $offset = 0, $separator = " ") {
